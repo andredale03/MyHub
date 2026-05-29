@@ -172,7 +172,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-950 flex transition-colors duration-200">
+    <div className="h-[100dvh] overflow-hidden bg-surface-50 dark:bg-surface-950 flex transition-colors duration-200">
 
       {/* ── Desktop sidebar ─────────────────────────────────────────────────── */}
       <aside className="hidden md:flex flex-col w-60 bg-white dark:bg-surface-900 border-r border-surface-100 dark:border-surface-800 p-5 fixed top-0 left-0 bottom-0 transition-colors duration-200">
@@ -210,7 +210,7 @@ export default function App() {
       </aside>
 
       {/* ── Main content ────────────────────────────────────────────────────── */}
-      <main className="flex-1 min-w-0 md:ml-60 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <main className="flex-1 min-w-0 md:ml-60 flex flex-col h-[100dvh] overflow-hidden">
 
         {/* Mobile header */}
         <header className="md:hidden flex items-center justify-between px-5 pb-3 pt-[calc(1.25rem+env(safe-area-inset-top))]">
@@ -233,6 +233,7 @@ export default function App() {
           />
         </header>
 
+        <div className="flex-1 overflow-y-auto">
         <div className="px-4 md:px-8 py-4 md:py-8 max-w-5xl mx-auto space-y-5">
 
           {/* ── Dashboard view ──────────────────────────────────────────────── */}
@@ -372,10 +373,10 @@ export default function App() {
           )}
 
         </div>
-      </main>
+        </div>
 
-      {/* ── Mobile bottom nav ───────────────────────────────────────────────── */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-surface-900 border-t border-surface-100 dark:border-surface-800 flex items-center h-16 z-40 transition-colors duration-200 pb-[env(safe-area-inset-bottom)] box-content">
+        {/* ── Bottom nav (parte della shell: fissa, scrolla solo il contenuto) ── */}
+        <nav className="md:hidden shrink-0 bg-white dark:bg-surface-900 border-t border-surface-100 dark:border-surface-800 flex items-center h-16 transition-colors duration-200 pb-[env(safe-area-inset-bottom)] box-content">
         <MobileNavItem icon={<LayoutDashboard size={20} />} label="Dashboard"
           active={view === 'dashboard'} onClick={() => setView('dashboard')} />
         <MobileNavItem icon={<List size={20} />} label="Spese"
@@ -393,7 +394,8 @@ export default function App() {
           onClick={() => setModal('categories')} />
         <MobileNavItem icon={<User size={20} />} label="Account"
           onClick={() => navigate('/account')} />
-      </nav>
+        </nav>
+      </main>
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
       {modal === 'add' && (

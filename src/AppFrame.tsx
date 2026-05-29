@@ -10,7 +10,7 @@ import { ArrowLeft } from 'lucide-react'
  */
 export default function AppFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-screen">
+    <div className="relative h-[100dvh] overflow-hidden">
       {children}
       <Link
         to="/"

@@ -2,6 +2,19 @@
 
 Log delle modifiche significative al progetto.
 
+## 2026-05-29 — Feel da app: app-shell + niente zoom/scroll involontari
+
+- **App-shell** in PayStats: root e `main` bloccati a `100dvh` con `overflow-hidden`;
+  header mobile e bottom nav fanno parte della shell (fissi) e **scrolla solo il
+  contenuto centrale** (`flex-1 overflow-y-auto`). `AppFrame` bloccato a `100dvh`.
+  Niente più scroll a livello pagina (verificato: `body` non scrolla).
+- **Niente zoom**: viewport `maximum-scale=1, user-scalable=no` + `touch-action:
+  manipulation`.
+- **Niente scroll/overscroll involontari**: `overscroll-behavior: none`
+  (no rimbalzo/pull-to-refresh), `overflow-x: hidden`.
+- **Niente "feel da sito"**: disattivati selezione testo, tap-highlight e callout
+  long-press (riabilitati su input/textarea).
+
 ## 2026-05-29 — Paywall abbonamento disattivato (prova privata)
 
 - `AuthContext`: nuovo flag `SUBSCRIPTION_REQUIRED = false`. Con paywall spento
