@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams, Link, Navigate } from 'react-router-dom'
 import { ArrowLeft, LayoutGrid, LogOut, Check, Sparkles, Loader2 } from 'lucide-react'
-import { useAuth } from './AuthContext'
+import { useAuth, SUBSCRIPTION_REQUIRED } from './AuthContext'
 import { startCheckout } from '../lib/billing'
 
 export default function AccountPage() {
@@ -74,8 +74,8 @@ export default function AccountPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        {/* Esito ritorno da Stripe */}
-        {checkoutResult === 'success' && (
+        {/* Esito ritorno da Stripe (solo se il paywall è attivo) */}
+        {SUBSCRIPTION_REQUIRED && checkoutResult === 'success' && (
           <div className="rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3 flex items-start gap-2">
             <Check className="w-4 h-4 mt-0.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div className="text-sm text-emerald-700 dark:text-emerald-300">
@@ -84,7 +84,7 @@ export default function AccountPage() {
             </div>
           </div>
         )}
-        {checkoutResult === 'cancel' && (
+        {SUBSCRIPTION_REQUIRED && checkoutResult === 'cancel' && (
           <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-700 dark:text-amber-300 flex items-start justify-between gap-2">
             <span>Pagamento annullato. Puoi attivare l'abbonamento quando vuoi.</span>
             <button onClick={dismissBanner} className="underline underline-offset-2 hover:no-underline shrink-0">Ok</button>
@@ -97,7 +97,19 @@ export default function AccountPage() {
           <p className="text-sm text-zinc-900 dark:text-zinc-100">{user.email}</p>
         </section>
 
-        {/* Abbonamento */}
+        {/* Abbonamento — disattivato in fase di prova privata */}
+        {!SUBSCRIPTION_REQUIRED ? (
+          <section className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-brand-500" />
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Abbonamento</h2>
+            </div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Accesso libero a tutte le app durante la fase di prova. L'abbonamento sarà
+              attivato più avanti.
+            </p>
+          </section>
+        ) : (
         <section className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5">
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-4 h-4 text-brand-500" />
@@ -134,6 +146,7 @@ export default function AccountPage() {
             </>
           )}
         </section>
+        )}
 
         <div className="flex items-center justify-between">
           <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300">

@@ -37,6 +37,14 @@ const AuthContext = createContext<AuthValue | null>(null)
 
 const ACTIVE_STATUSES = ['active', 'trialing']
 
+/**
+ * Paywall abbonamento. Messo a `false` per ora: l'app è in prova privata, quindi
+ * l'accesso alle app NON richiede un abbonamento attivo. Rimetti a `true` per
+ * riattivare il requisito (la logica Stripe e la UI sono rimaste pronte).
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export const SUBSCRIPTION_REQUIRED: boolean = false
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(isSupabaseConfigured)
   const [user, setUser] = useState<User | null>(null)
@@ -103,8 +111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Modello Setapp: un abbonamento attivo sblocca tutte le app del catalogo.
   // In modalità demo (Supabase non configurato) tutto è accessibile.
+  // Con SUBSCRIPTION_REQUIRED=false il paywall è disattivato: basta essere loggati.
   const hasAccess = useCallback(
-    (_appId: string) => !isSupabaseConfigured || authBypass || subscriptionActive,
+    (_appId: string) =>
+      !isSupabaseConfigured || authBypass || !SUBSCRIPTION_REQUIRED || subscriptionActive,
     [subscriptionActive],
   )
 

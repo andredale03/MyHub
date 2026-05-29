@@ -2,6 +2,14 @@
 
 Log delle modifiche significative al progetto.
 
+## 2026-05-29 — Paywall abbonamento disattivato (prova privata)
+
+- `AuthContext`: nuovo flag `SUBSCRIPTION_REQUIRED = false`. Con paywall spento
+  `hasAccess` non richiede più l'abbonamento: basta essere loggati (o demo/bypass).
+- `AccountPage`: nascosti pulsante "Attiva abbonamento" e banner di ritorno Stripe;
+  mostrata una nota "accesso libero in fase di prova". Codice Stripe/billing
+  invariato e pronto: per riattivare basta rimettere `SUBSCRIPTION_REQUIRED = true`.
+
 ## 2026-05-29 — Mobile/standalone: fix overflow e scroll, meta PWA
 
 - `index.html`: viewport `viewport-fit=cover`, `theme-color` (light/dark), meta

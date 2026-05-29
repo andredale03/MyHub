@@ -66,6 +66,11 @@ hasAccess(appId)   = !supabaseConfigurato || subscriptionActive
 
 La guardia `RequireAccess` usa `hasAccess` per proteggere le route `/app/*`.
 
+> **Nota (prova privata):** il paywall è attualmente **disattivato** via
+> `SUBSCRIPTION_REQUIRED = false` in `AuthContext`. In questa fase `hasAccess` non
+> richiede l'abbonamento (basta il login, o demo/bypass). Per riattivarlo:
+> `SUBSCRIPTION_REQUIRED = true`.
+
 > La tabella `entitlements` esiste già per supportare, in futuro, un modello
 > granulare (accesso a singole app o pacchetti) senza modificare le guardie.
 
