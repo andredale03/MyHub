@@ -7,9 +7,9 @@
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
   html, body {
-    /* Niente scroll orizzontale e niente "rimbalzo" verticale (incl. standalone). */
+    /* Niente scroll orizzontale, niente rimbalzo/pull-to-refresh (feel da app). */
     overflow-x: hidden;
-    overscroll-behavior-y: none;
+    overscroll-behavior: none;
     width: 100%;
   }
   body {
@@ -19,7 +19,19 @@
     min-height: 100dvh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Comportamento "app", non "sito": niente doppio-tap zoom, niente flash al
+       tocco, niente menu long-press, niente selezione testo accidentale. */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
     @apply bg-zinc-50 dark:bg-zinc-950 font-sans antialiased transition-colors duration-200;
+  }
+  /* La selezione/scrittura resta attiva dove serve davvero. */
+  input, textarea, [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
   }
 }
 
