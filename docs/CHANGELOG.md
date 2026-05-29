@@ -2,6 +2,28 @@
 
 Log delle modifiche significative al progetto.
 
+## 2026-05-29 — Nuova app: GyMode (schede di allenamento)
+
+Seconda app dell'hub, costruita con lo stesso impianto di PayStats (app-shell,
+tema slate, backend doppio local/Supabase, personalizzazione).
+
+### Due sezioni per ruolo
+- **Personal**: crea e modifica le **schede** (giorni + esercizi con serie,
+  ripetizioni, peso, recupero) tramite editor dedicato.
+- **Utente**: visualizza le schede, le **esegue** (log delle serie con rip×peso e
+  check completata) e consulta lo **storico** delle sessioni.
+- Modalità (Personal/Utente) e **unità** (kg/lb) selezionabili dalle impostazioni.
+
+### Struttura (`src/apps/gymode/`)
+- `types.ts`, `storage.ts` (localStorage + scheda demo + libreria esercizi),
+  `remote.ts` (Supabase per-utente), `hooks/useGymode.ts` (backend doppio come
+  `useExpenses`), `format.ts` (peso), `ErrorBoundary`, componenti `Sheet`,
+  `WorkoutEditor`, `ExecuteSession`, `App.tsx` (app-shell + bottom nav).
+- Route `/app/gymode` (lazy) dietro `RequireAccess`; voce nel catalogo
+  (`DEFAULT_APPS` + seed `apps`).
+- Schema: tabelle `gymode_workouts` (giorni in JSONB), `gymode_sessions`,
+  `gymode_settings` con RLS per-utente.
+
 ## 2026-05-29 — Hub: identità (logo) + home in stile launcher
 
 - Nuovo **logo dell'hub** (tessera gradient indaco con griglia 2×2) in

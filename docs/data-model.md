@@ -150,6 +150,21 @@ esserti registrato, apri la tabella `profiles` su Supabase e imposta
 > Il layout della dashboard è una preferenza **locale al dispositivo** (non
 > sincronizzata su Supabase), gestita da `src/apps/paystats/dashboard.ts`.
 
+### GyMode (dati per-utente)
+
+Stessa logica a doppio backend di PayStats (`useGymode`). Account → Supabase,
+demo → localStorage (`gymode_*`).
+
+| Tabella | Contenuto |
+|---------|-----------|
+| `gymode_workouts` | Schede: nome, icona, colore + `days` (giorni/esercizi) in **JSONB**. PK `user_id, id` |
+| `gymode_sessions` | Sessioni eseguite (intera sessione in `data` JSONB). PK `user_id, id` |
+| `gymode_settings` | `role` ('personal' \| 'user') e `unit` ('kg' \| 'lb'). PK `user_id` |
+
+RLS: ogni utente accede solo alle proprie righe (`auth.uid() = user_id`). Il
+**ruolo** decide la sezione: *personal* crea/modifica le schede, *utente* le
+esegue e tiene lo storico.
+
 ## Catalogo app (`AppEntry`)
 
 Il catalogo dell'hub è descritto da `AppEntry` (`src/storage.ts`):

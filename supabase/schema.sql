@@ -171,18 +171,76 @@ create policy "paystats_settings: proprie"
   on public.paystats_settings for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- ── GyMode: dati per-utente ──────────────────────────────────────────────────
+-- Schede (workouts), sessioni e impostazioni di GyMode, isolate per utente.
+create table if not exists public.gymode_workouts (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  id text not null,
+  name text not null,
+  description text,
+  icon text,
+  color text,
+  days jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+create table if not exists public.gymode_sessions (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  id text not null,
+  date date not null,
+  data jsonb not null,
+  primary key (user_id, id)
+);
+
+create table if not exists public.gymode_settings (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  role text not null default 'user',   -- 'personal' | 'user'
+  unit text not null default 'kg'       -- 'kg' | 'lb'
+);
+
+alter table public.gymode_workouts enable row level security;
+alter table public.gymode_sessions enable row level security;
+alter table public.gymode_settings enable row level security;
+
+drop policy if exists "gymode_workouts: proprie" on public.gymode_workouts;
+create policy "gymode_workouts: proprie"
+  on public.gymode_workouts for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "gymode_sessions: proprie" on public.gymode_sessions;
+create policy "gymode_sessions: proprie"
+  on public.gymode_sessions for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "gymode_settings: proprie" on public.gymode_settings;
+create policy "gymode_settings: proprie"
+  on public.gymode_settings for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- ── seed del catalogo ────────────────────────────────────────────────────────
 insert into public.apps (id, name, description, route, icon, color, status, sort_order)
-values (
-  'paystats',
-  'PayStats',
-  'Traccia le tue spese mensili, analizza budget per categoria e visualizza trend finanziari.',
-  '/app/paystats',
-  '💰',
-  'from-indigo-500 to-purple-600',
-  'live',
-  0
-)
+values
+  (
+    'paystats',
+    'PayStats',
+    'Traccia le tue spese mensili, analizza budget per categoria e visualizza trend finanziari.',
+    '/app/paystats',
+    '💰',
+    'from-indigo-500 to-purple-600',
+    'live',
+    0
+  ),
+  (
+    'gymode',
+    'GyMode',
+    'Schede di allenamento: il personal le crea, l''utente le esegue e tiene lo storico.',
+    '/app/gymode',
+    '🏋️',
+    'from-rose-500 to-orange-600',
+    'live',
+    1
+  )
 on conflict (id) do nothing;
 
 -- ── bootstrap del primo admin ────────────────────────────────────────────────

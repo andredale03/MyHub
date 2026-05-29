@@ -29,6 +29,17 @@ export const DEFAULT_APPS: AppEntry[] = [
     status: 'live',
     order: 0,
   },
+  {
+    id: 'gymode',
+    name: 'GyMode',
+    description: 'Schede di allenamento: il personal le crea, l’utente le esegue e tiene lo storico.',
+    url: '',
+    route: '/app/gymode',
+    icon: '🏋️',
+    color: 'from-rose-500 to-orange-600',
+    status: 'live',
+    order: 1,
+  },
 ]
 
 export function loadApps(): AppEntry[] {

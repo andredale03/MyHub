@@ -13,6 +13,7 @@ import AccountPage from './auth/AccountPage.tsx'
 // Le app figlie sono caricate in lazy: il loro bundle (incluso Recharts)
 // non pesa sul caricamento iniziale dell'hub.
 const PayStats = lazy(() => import('./apps/paystats'))
+const Gymode = lazy(() => import('./apps/gymode'))
 
 function AppFallback() {
   return (
@@ -38,6 +39,18 @@ createRoot(document.getElementById('root')!).render(
                 <AppFrame>
                   <Suspense fallback={<AppFallback />}>
                     <PayStats />
+                  </Suspense>
+                </AppFrame>
+              </RequireAccess>
+            }
+          />
+          <Route
+            path="/app/gymode"
+            element={
+              <RequireAccess appId="gymode">
+                <AppFrame>
+                  <Suspense fallback={<AppFallback />}>
+                    <Gymode />
                   </Suspense>
                 </AppFrame>
               </RequireAccess>
