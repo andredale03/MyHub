@@ -1,14 +1,31 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Moon, Sun, ExternalLink, ArrowRight, LayoutGrid, Settings, UserCircle } from 'lucide-react'
+import { Moon, Sun, ExternalLink, Settings, UserCircle, Plus } from 'lucide-react'
 import { loadApps, fetchApps, type AppEntry } from './storage'
 import { useAuth } from './auth/AuthContext'
 import { useTheme } from './lib/theme'
 
 const statusLabel: Record<AppEntry['status'], { label: string; classes: string }> = {
-  live:    { label: 'Live',         classes: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
-  wip:     { label: 'In corso',     classes: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
-  planned: { label: 'Pianificata',  classes: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
+  live:    { label: 'Live',        classes: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
+  wip:     { label: 'In corso',    classes: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
+  planned: { label: 'Pianificata', classes: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' },
+}
+
+/** Logo dell'hub: l'icona dell'app (favicon.svg). */
+function HubLogo({ className = 'w-8 h-8' }: { className?: string }) {
+  return <img src="/favicon.svg" alt="MyHub" className={`${className} object-contain`} />
+}
+
+function HeaderButton({ onClick, label, children }: { onClick: () => void; label: string; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+    >
+      {children}
+    </button>
+  )
 }
 
 export default function App() {
@@ -25,144 +42,120 @@ export default function App() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 font-sans transition-colors duration-200">
+    // App-shell: header fisso, scrolla solo il contenuto centrale.
+    <div className="h-[100dvh] overflow-hidden flex flex-col bg-zinc-50 dark:bg-zinc-950 font-sans transition-colors duration-200">
+
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm">
+      <header className="shrink-0 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm pt-[env(safe-area-inset-top)]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
-              <LayoutGrid className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-lg tracking-tight">
-              My Hub
-            </span>
+            <HubLogo />
+            <span className="font-bold text-zinc-900 dark:text-zinc-100 text-lg tracking-tight">MyHub</span>
           </div>
           <div className="flex items-center gap-1">
             {configured && (
-              <button
-                onClick={() => navigate(user ? '/account' : '/login')}
-                className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                aria-label={user ? 'Account' : 'Accedi'}
-              >
+              <HeaderButton onClick={() => navigate(user ? '/account' : '/login')} label={user ? 'Account' : 'Accedi'}>
                 <UserCircle className="w-4 h-4" />
-              </button>
+              </HeaderButton>
             )}
-            <button
-              onClick={() => navigate('/admin')}
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-              aria-label="Admin"
-            >
+            <HeaderButton onClick={() => navigate('/admin')} label="Admin">
               <Settings className="w-4 h-4" />
-            </button>
-            <button
-              onClick={toggleTheme}
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-              aria-label="Toggle theme"
-            >
+            </HeaderButton>
+            <HeaderButton onClick={toggleTheme} label="Cambia tema">
               {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
+            </HeaderButton>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-14 pb-10 text-center">
-        <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-          Le mie app
-        </h1>
-        <p className="mt-3 text-zinc-500 dark:text-zinc-400 text-lg">
-          Strumenti personali sempre a portata di mano.
-        </p>
-      </div>
+      {/* Contenuto scrollabile */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
 
-      {/* App grid */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 pb-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {apps.map((app) => {
-            const s = statusLabel[app.status]
-            const isLive = app.status === 'live'
-            const isInternal = Boolean(app.route)
+          {/* Intestazione */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Le tue app</h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Tutti i tuoi strumenti in un unico posto.
+            </p>
+          </div>
 
-            const cardClasses = [
-              'group relative flex flex-col rounded-2xl border bg-white dark:bg-zinc-900 overflow-hidden transition-all duration-200 text-left',
-              isLive
-                ? 'border-zinc-200 dark:border-zinc-800 hover:border-brand-300 dark:hover:border-brand-700 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
-                : 'border-zinc-200 dark:border-zinc-800 opacity-60 cursor-default',
-            ].join(' ')
+          {/* Griglia app — stile launcher */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {apps.map((app) => {
+              const s = statusLabel[app.status]
+              const isLive = app.status === 'live'
+              const isInternal = Boolean(app.route)
 
-            const inner = (
-              <>
-                <div className={`h-2 w-full bg-gradient-to-r ${app.color}`} />
-                <div className="flex flex-col flex-1 p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <span className="text-3xl">{app.icon}</span>
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${s.classes}`}>
+              const tileClasses = [
+                'group relative flex flex-col items-center text-center gap-3 rounded-2xl border p-4 transition-all duration-200',
+                'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800',
+                isLive
+                  ? 'hover:border-brand-300 dark:hover:border-brand-700 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer active:scale-[0.98]'
+                  : 'opacity-55 cursor-default',
+              ].join(' ')
+
+              const inner = (
+                <>
+                  {/* Icona app (tessera gradient) */}
+                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${app.color} flex items-center justify-center text-3xl shadow-card-lg transition-transform duration-200 ${isLive ? 'group-hover:scale-105' : ''}`}>
+                    {app.icon}
+                  </div>
+
+                  <div className="min-w-0 w-full">
+                    <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate flex items-center justify-center gap-1">
+                      {app.name}
+                      {isLive && !isInternal && <ExternalLink className="w-3 h-3 text-zinc-400 shrink-0" />}
+                    </h2>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-2">
+                      {app.description}
+                    </p>
+                  </div>
+
+                  {/* Badge stato solo per app non live */}
+                  {!isLive && (
+                    <span className={`absolute top-2 right-2 text-[10px] font-medium px-2 py-0.5 rounded-full ${s.classes}`}>
                       {s.label}
                     </span>
-                  </div>
-                  <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
-                    {app.name}
-                  </h2>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed flex-1">
-                    {app.description}
-                  </p>
-                  {isLive && (
-                    <div className="mt-4 flex items-center gap-1 text-sm font-medium text-brand-600 dark:text-brand-400 group-hover:gap-2 transition-all">
-                      Apri app {isInternal
-                        ? <ArrowRight className="w-3.5 h-3.5" />
-                        : <ExternalLink className="w-3.5 h-3.5" />}
-                    </div>
                   )}
-                </div>
-              </>
-            )
-
-            // App interna alla shell → naviga dentro l'hub
-            if (isInternal) {
-              return (
-                <button
-                  key={app.id}
-                  type="button"
-                  disabled={!isLive}
-                  onClick={() => isLive && app.route && navigate(app.route)}
-                  className={cardClasses}
-                >
-                  {inner}
-                </button>
+                </>
               )
-            }
 
-            // App esterna → apre l'URL in un nuovo tab
-            return (
-              <a
-                key={app.id}
-                href={isLive ? app.url : undefined}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cardClasses}
-              >
-                {inner}
-              </a>
-            )
-          })}
+              if (isInternal) {
+                return (
+                  <button key={app.id} type="button" disabled={!isLive}
+                    onClick={() => isLive && app.route && navigate(app.route)} className={tileClasses}>
+                    {inner}
+                  </button>
+                )
+              }
+              return (
+                <a key={app.id} href={isLive ? app.url : undefined} target="_blank" rel="noopener noreferrer" className={tileClasses}>
+                  {inner}
+                </a>
+              )
+            })}
 
-          {/* Placeholder */}
-          <button
-            onClick={() => navigate('/admin')}
-            className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 p-8 text-center min-h-[200px] hover:border-brand-300 dark:hover:border-brand-700 hover:bg-brand-50 dark:hover:bg-brand-900/10 transition-colors group"
-          >
-            <span className="text-3xl mb-3">＋</span>
-            <p className="text-sm text-zinc-400 dark:text-zinc-600 group-hover:text-brand-500 transition-colors">
-              Aggiungi un'app
-            </p>
-          </button>
+            {/* Aggiungi un'app */}
+            <button
+              onClick={() => navigate('/admin')}
+              className="group flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 p-4 min-h-[148px] hover:border-brand-300 dark:hover:border-brand-700 hover:bg-brand-50/50 dark:hover:bg-brand-900/10 transition-colors"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-brand-500 transition-colors">
+                <Plus className="w-7 h-7" />
+              </div>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500 group-hover:text-brand-500 transition-colors">
+                Aggiungi un'app
+              </span>
+            </button>
+          </div>
+
+          {/* Footer */}
+          <p className="text-center text-xs text-zinc-400 dark:text-zinc-600 mt-10">
+            MyHub · {new Date().getFullYear()}
+          </p>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-zinc-200 dark:border-zinc-800 py-6 text-center text-xs text-zinc-400 dark:text-zinc-600">
-        My Hub · {new Date().getFullYear()}
-      </footer>
+      </div>
     </div>
   )
 }

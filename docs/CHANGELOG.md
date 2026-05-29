@@ -2,6 +2,17 @@
 
 Log delle modifiche significative al progetto.
 
+## 2026-05-29 — Hub: identità (logo) + home in stile launcher
+
+- Nuovo **logo dell'hub** (tessera gradient indaco con griglia 2×2) in
+  `public/favicon.svg` → usato come favicon, apple-touch-icon e icona del manifest
+  (icona della Home). Componente `HubLogo` inline nell'header.
+- Home dell'hub (`src/App.tsx`) ridisegnata in **stile launcher**: ogni app è una
+  **tessera-icona** (gradient `color` + emoji `icon`) con nome e descrizione;
+  griglia 2/3/4 colonne. Indicatore link esterno e badge stato per app non live.
+- Hub convertito ad **app-shell** (header fisso, solo il contenuto scrolla),
+  coerente con PayStats; safe-area top sull'header.
+
 ## 2026-05-29 — Feel da app: app-shell + niente zoom/scroll involontari
 
 - **App-shell** in PayStats: root e `main` bloccati a `100dvh` con `overflow-hidden`;
