@@ -210,10 +210,10 @@ export default function App() {
       </aside>
 
       {/* ── Main content ────────────────────────────────────────────────────── */}
-      <main className="flex-1 md:ml-60 pb-24 md:pb-0">
+      <main className="flex-1 md:ml-60 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
 
         {/* Mobile header */}
-        <header className="md:hidden flex items-center justify-between px-5 pt-5 pb-3">
+        <header className="md:hidden flex items-center justify-between px-5 pb-3 pt-[calc(1.25rem+env(safe-area-inset-top))]">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
               <TrendingDown size={16} className="text-white" />
@@ -249,16 +249,16 @@ export default function App() {
             ) : (
             <>
               {/* Selettore mese */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <button className="btn-ghost p-2 rounded-xl" onClick={gotoPrevMonth} aria-label="Mese precedente">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1 min-w-0">
+                  <button className="btn-ghost p-2 rounded-xl shrink-0" onClick={gotoPrevMonth} aria-label="Mese precedente">
                     <ChevronLeft size={18} />
                   </button>
-                  <span className="text-sm font-semibold text-surface-700 dark:text-surface-200 capitalize min-w-[9rem] text-center">
+                  <span className="text-sm font-semibold text-surface-700 dark:text-surface-200 capitalize text-center truncate">
                     {monthLabel}
                   </span>
                   <button
-                    className="btn-ghost p-2 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="btn-ghost p-2 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
                     onClick={gotoNextMonth}
                     disabled={isCurrentMonth}
                     aria-label="Mese successivo"
@@ -266,7 +266,7 @@ export default function App() {
                     <ChevronRight size={18} />
                   </button>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   {!isCurrentMonth && (
                     <button
                       className="btn-ghost text-xs"
@@ -375,7 +375,7 @@ export default function App() {
       </main>
 
       {/* ── Mobile bottom nav ───────────────────────────────────────────────── */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-surface-900 border-t border-surface-100 dark:border-surface-800 flex items-center h-16 z-40 transition-colors duration-200">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-surface-900 border-t border-surface-100 dark:border-surface-800 flex items-center h-16 z-40 transition-colors duration-200 pb-[env(safe-area-inset-bottom)] box-content">
         <MobileNavItem icon={<LayoutDashboard size={20} />} label="Dashboard"
           active={view === 'dashboard'} onClick={() => setView('dashboard')} />
         <MobileNavItem icon={<List size={20} />} label="Spese"

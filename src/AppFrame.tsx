@@ -14,7 +14,7 @@ export default function AppFrame({ children }: { children: ReactNode }) {
       {children}
       <Link
         to="/"
-        className="fixed z-[60] bottom-20 right-4 md:bottom-5 md:right-5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-zinc-900/90 dark:bg-white/90 text-white dark:text-zinc-900 text-sm font-medium shadow-lg backdrop-blur-sm hover:scale-105 active:scale-95 transition-transform"
+        className="fixed z-[60] right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-5 md:right-5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-zinc-900/90 dark:bg-white/90 text-white dark:text-zinc-900 text-sm font-medium shadow-lg backdrop-blur-sm hover:scale-105 active:scale-95 transition-transform"
         aria-label="Torna all'hub"
       >
         <ArrowLeft className="w-4 h-4" /> Hub

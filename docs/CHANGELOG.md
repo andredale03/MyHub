@@ -2,6 +2,20 @@
 
 Log delle modifiche significative al progetto.
 
+## 2026-05-29 — Mobile/standalone: fix overflow e scroll, meta PWA
+
+- `index.html`: viewport `viewport-fit=cover`, `theme-color` (light/dark), meta
+  Apple/Android per la modalità **standalone** (app aggiunta alla Home), titolo
+  "MyHub", link al manifest.
+- Nuovo `public/manifest.webmanifest` (display standalone, colori slate, icona).
+- `index.css`: `overflow-x: hidden` + `overscroll-behavior-y: none` (niente scroll
+  orizzontale né rimbalzo), `min-height: 100dvh`.
+- PayStats: **safe-area** gestite — header mobile sotto il notch
+  (`env(safe-area-inset-top)`), bottom nav e padding contenuto sopra l'home
+  indicator (`env(safe-area-inset-bottom)`); pulsante "Hub" rialzato di conseguenza.
+- Selettore mese reso non-overflowante su schermi stretti (label troncata,
+  gruppi `shrink-0`).
+
 ## 2026-05-29 — PayStats: 4ª voce (Account) nella bottom bar mobile
 
 - La barra di navigazione mobile passa a **4 voci con il + centrato**:

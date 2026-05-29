@@ -6,8 +6,17 @@
 
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    /* Niente scroll orizzontale e niente "rimbalzo" verticale (incl. standalone). */
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+    width: 100%;
+  }
   body {
     margin: 0;
+    min-height: 100vh;
+    /* 100dvh segue la viewport reale su mobile (barre browser dinamiche). */
+    min-height: 100dvh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     @apply bg-zinc-50 dark:bg-zinc-950 font-sans antialiased transition-colors duration-200;
