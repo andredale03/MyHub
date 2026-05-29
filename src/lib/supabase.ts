@@ -21,5 +21,16 @@ export const authBypass = ['true', '1'].includes(
 )
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(url!, anonKey!)
+  ? createClient(url!, anonKey!, {
+      auth: {
+        // La sessione (access + refresh token) viene salvata in localStorage e
+        // rinnovata automaticamente: una volta autenticato resti loggato anche
+        // chiudendo e riaprendo l'app (incluso "aggiungi a Home" sul telefono).
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        storageKey: 'myhub-auth',
+      },
+    })
   : null
