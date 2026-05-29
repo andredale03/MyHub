@@ -1,10 +1,14 @@
 import { TrendingUp, TrendingDown, AlertTriangle, Target, Zap } from 'lucide-react'
 import type { Category, Expense } from '../types'
+import { formatMoney } from '../format'
 
 interface Props {
   expenses: Expense[]
   categories: Category[]
   income: number
+  year: number
+  month: number
+  currency: string
 }
 
 interface Insight {
@@ -15,15 +19,16 @@ interface Insight {
   bg: string
 }
 
-export function InsightsPanel({ expenses, categories, income }: Props) {
+export function InsightsPanel({ expenses, categories, income, year, month, currency }: Props) {
   const now          = new Date()
-  const daysInMonth  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const daysPassed   = now.getDate()
-  const daysLeft     = daysInMonth - daysPassed
+  const isCurrentMonth = now.getFullYear() === year && now.getMonth() === month
+  const daysInMonth  = new Date(year, month + 1, 0).getDate()
+  const daysPassed   = isCurrentMonth ? now.getDate() : daysInMonth
+  const daysLeft     = isCurrentMonth ? daysInMonth - daysPassed : 0
 
   const monthExp = expenses.filter(e => {
     const d = new Date(e.date)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    return d.getMonth() === month && d.getFullYear() === year
   })
 
   const totalSpent  = monthExp.reduce((s, e) => s + e.amount, 0)
@@ -50,7 +55,7 @@ export function InsightsPanel({ expenses, categories, income }: Props) {
     insights.push({
       icon: <span className="text-base leading-none">{topCat.cat.icon}</span>,
       title: 'Categoria principale',
-      body: `${topCat.cat.name} · €${topCat.total.toFixed(0)} (${totalSpent > 0 ? ((topCat.total / totalSpent) * 100).toFixed(0) : 0}% del totale)`,
+      body: `${topCat.cat.name} · ${formatMoney(topCat.total, currency)} (${totalSpent > 0 ? ((topCat.total / totalSpent) * 100).toFixed(0) : 0}% del totale)`,
       color: 'text-orange-600 dark:text-orange-400',
       bg: 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800/40',
     })
@@ -59,10 +64,14 @@ export function InsightsPanel({ expenses, categories, income }: Props) {
   if (income > 0) {
     insights.push({
       icon: savings >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />,
-      title: 'Risparmio previsto',
+      title: isCurrentMonth ? 'Risparmio previsto' : 'Risparmio del mese',
       body: savings >= 0
-        ? `A fine mese stimi di risparmiare €${savings.toFixed(0)}`
-        : `Rischi di sforare il budget di €${Math.abs(savings).toFixed(0)}`,
+        ? (isCurrentMonth
+            ? `A fine mese stimi di risparmiare ${formatMoney(savings, currency)}`
+            : `Hai risparmiato ${formatMoney(savings, currency)}`)
+        : (isCurrentMonth
+            ? `Rischi di sforare il budget di ${formatMoney(Math.abs(savings), currency)}`
+            : `Hai sforato il budget di ${formatMoney(Math.abs(savings), currency)}`),
       color: savings >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
       bg: savings >= 0
         ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/40'

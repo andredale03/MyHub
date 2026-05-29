@@ -1,8 +1,25 @@
 # Deploy su Vercel
 
+## Step 0 — Prepara il repository
+
+Vercel si aggancia a un repository GitHub, quindi il progetto deve essere prima
+sotto git e pushato:
+
+```bash
+git init -b main
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/<utente>/<repo>.git
+git push -u origin main
+```
+
+> `.gitignore` esclude già `node_modules`, `dist` e `.env` (resta solo
+> `.env.example`). Verifica con `git status` che nessun file `.env` con segreti
+> venga tracciato.
+
 ## Prima volta
 
-1. Pusha il progetto su GitHub
+1. Pusha il progetto su GitHub (vedi Step 0)
 2. Vai su [vercel.com](https://vercel.com) → **Add New Project**
 3. Importa il repository GitHub
 4. Vercel rileva automaticamente Vite — nessuna configurazione di build necessaria
@@ -11,6 +28,19 @@
 
 Il dominio assegnato sarà tipo `myhub-xxx.vercel.app`. Puoi rinominarlo in
 **Settings → Domains**.
+
+> **Versione di Node**: il progetto pinna Node 22 (`engines.node` in
+> `package.json` + `.nvmrc`); Vercel rispetta questo valore. Vite 5 funziona
+> comunque da Node 18 in su. In locale usa `nvm use` per allinearti.
+
+## Funzioni serverless (`api/`)
+
+Vercel rileva automaticamente la cartella `api/` come **Serverless Functions**,
+anche se il progetto frontend è statico (Vite). I file con prefisso `_`
+(`api/_lib/…`) sono helper condivisi, non route. Le dipendenze runtime delle
+funzioni (`stripe`, `@supabase/supabase-js`) sono in `dependencies`, così Vercel
+le include nel bundle. I `rewrites` in `vercel.json` instradano tutto su
+`index.html` **tranne** `/api`.
 
 ## Monorepo: un solo deploy
 
@@ -52,6 +82,9 @@ In Vercel: **Project → Settings → Environment Variables**.
 3. Authentication → Providers → abilita **Email** (e disattiva la conferma email
    in sviluppo, se preferisci)
 4. Copia URL e anon key in `.env` (locale) e nelle env di Vercel (produzione)
+5. **Nomina il primo admin**: registrati dall'app, poi nel SQL Editor esegui
+   `update public.profiles set is_admin = true where email = 'tua-email';`
+   Quell'account potrà gestire il catalogo da `/admin`.
 
 ## Configurare Stripe (una volta)
 

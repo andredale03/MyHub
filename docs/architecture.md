@@ -60,7 +60,7 @@ MyHub/
 | Tecnologia | Ruolo |
 |------------|-------|
 | React 19 + TypeScript | UI framework + type safety |
-| Vite 8 | Build tool e dev server |
+| Vite 5 | Build tool e dev server (stabile; v8/Rolldown rompe recharts in dev) |
 | Tailwind CSS 3 | Styling utility-first (palette `brand` + `surface`) |
 | React Router DOM 7 | Routing tra hub, admin, auth e app figlie |
 | @supabase/supabase-js | Auth + database (profili, abbonamento, catalogo) |
@@ -72,7 +72,7 @@ MyHub/
 | Route | Componente | Accesso |
 |-------|-----------|---------|
 | `/` | `App.tsx` | Pubblico (catalogo) |
-| `/admin` | `AdminPage.tsx` | Protetto da PIN |
+| `/admin` | `AdminPage.tsx` | Admin Supabase (`is_admin`); PIN in modalità demo |
 | `/login` | `LoginPage.tsx` | Pubblico |
 | `/account` | `AccountPage.tsx` | Richiede login |
 | `/app/paystats` | `apps/paystats` | Richiede login + abbonamento attivo |
@@ -83,7 +83,7 @@ per PayStats) non pesa sul caricamento iniziale dell'hub.
 ## Autenticazione ed entitlement
 
 Gestiti da `AuthProvider` (`src/auth/AuthContext.tsx`), che espone sessione,
-profilo, stato abbonamento e la funzione `hasAccess(appId)`.
+profilo, stato abbonamento, `isAdmin` e la funzione `hasAccess(appId)`.
 
 ```
 main.tsx
@@ -96,6 +96,8 @@ main.tsx
 
 `RequireAccess` decide:
 - **modalità demo** (Supabase non configurato) → accesso libero;
+- **`VITE_AUTH_BYPASS=true`** (solo sviluppo) → accesso libero anche con Supabase
+  configurato, senza login né abbonamento;
 - non autenticato → redirect a `/login`;
 - autenticato senza abbonamento attivo → redirect a `/account`;
 - altrimenti → mostra l'app.
@@ -135,10 +137,12 @@ Eventi gestiti: `checkout.session.completed`, `customer.subscription.updated`,
 è una cartella sotto `src/apps/` montata come route. Dà la sensazione di "ambiente
 unico" (login, tema e navigazione condivisi) con la minima complessità.
 
-**App figlie autosufficienti** — ogni app sotto `src/apps/` conserva i propri
-componenti, hook, contesti e layer di persistenza. PayStats usa ancora il proprio
-`localStorage` (namespace `paystats_`). La migrazione dei suoi dati a Supabase
-per-utente è una milestone successiva.
+**App figlie autosufficienti (con auth condivisa)** — ogni app sotto `src/apps/`
+conserva i propri componenti, hook, contesti e layer di persistenza. PayStats
+persiste su Supabase per-utente quando l'utente è loggato (`remote.ts`) e ricade su
+`localStorage` (namespace `paystats_`) in modalità demo. Per la sync per-utente
+l'hook `useExpenses` usa l'auth dell'hub (`useAuth`): è l'unico punto di
+accoppiamento con la shell.
 
 **`hasAccess` centralizzato** — la logica "chi può aprire cosa" vive in un solo punto
 (`AuthContext`). Oggi implementa il modello "tutto incluso"; domani può diventare
@@ -168,8 +172,9 @@ Catalogo app:
   Supabase (tabella apps) → fetchApps() → App.tsx (catalogo)
   fallback: localStorage (hub-apps) → loadApps() ; AdminPage (CRUD) usa localStorage
 
-Dati delle app figlie (oggi):
-  localStorage namespaced (es. paystats_*) → hook dell'app (useExpenses)
+Dati delle app figlie:
+  PayStats con utente loggato → Supabase per-utente (paystats_* tables) via remote.ts
+  fallback demo → localStorage namespaced (paystats_*) → hook useExpenses
 ```
 
 ## Chiavi localStorage
@@ -186,10 +191,9 @@ Dati delle app figlie (oggi):
 
 ## Debito tecnico noto
 
-- **Admin scrive solo in locale**: la home legge il catalogo da Supabase
-  (`fetchApps`) ma l'AdminPage salva ancora su localStorage (`saveApps`). La
-  scrittura del catalogo su Supabase (con auth admin) è il passo successivo.
-- **PIN admin client-side**: sufficiente per uso personale, da rivedere se l'area
-  admin gestirà dati sensibili lato server.
-- **Dati PayStats locali**: non ancora migrati a Supabase per-utente (no sync
-  multi-dispositivo).
+- **PIN admin solo in demo**: senza Supabase l'area `/admin` è protetta da un PIN
+  client-side (uso personale). Con Supabase l'accesso passa invece dal ruolo
+  `is_admin` con policy RLS lato DB.
+- **Mutazioni PayStats fire-and-forget**: le scritture remote non bloccano la UI e
+  non mostrano ancora un errore in caso di fallimento (aggiornamento ottimistico).
+  Da rivedere se serve feedback esplicito o riconciliazione.

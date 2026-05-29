@@ -1,22 +1,30 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import type { Category } from '../types'
+import type { Category, Expense } from '../types'
 import { useToast } from '../context/ToastContext'
 import { BottomSheet } from './BottomSheet'
+import { currencySymbol } from '../format'
+
+interface ExpenseInput { amount: number; description: string; categoryId: string; date: string }
 
 interface Props {
   categories: Category[]
-  onAdd: (exp: { amount: number; description: string; categoryId: string; date: string }) => void
+  /** Se presente, il modale è in modalità modifica. */
+  initial?: Expense | null
+  currency?: string
+  onAdd: (exp: ExpenseInput) => void
+  onUpdate?: (id: string, patch: ExpenseInput) => void
   onClose: () => void
 }
 
-export function AddExpenseModal({ categories, onAdd, onClose }: Props) {
+export function AddExpenseModal({ categories, initial, currency = 'EUR', onAdd, onUpdate, onClose }: Props) {
   const { toast } = useToast()
   const today = new Date().toISOString().split('T')[0]
-  const [amount, setAmount] = useState('')
-  const [description, setDescription] = useState('')
-  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '')
-  const [date, setDate] = useState(today)
+  const isEdit = Boolean(initial)
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
+  const [description, setDescription] = useState(initial?.description ?? '')
+  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? categories[0]?.id ?? '')
+  const [date, setDate] = useState(initial?.date ?? today)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -34,8 +42,14 @@ export function AddExpenseModal({ categories, onAdd, onClose }: Props) {
       return
     }
     try {
-      onAdd({ amount: parsed, description: description.trim(), categoryId, date })
-      toast.success('Spesa aggiunta correttamente.', 'Spesa salvata')
+      const data = { amount: parsed, description: description.trim(), categoryId, date }
+      if (isEdit && initial && onUpdate) {
+        onUpdate(initial.id, data)
+        toast.success('Spesa aggiornata correttamente.', 'Spesa salvata')
+      } else {
+        onAdd(data)
+        toast.success('Spesa aggiunta correttamente.', 'Spesa salvata')
+      }
       onClose()
     } catch {
       toast.error('Impossibile salvare la spesa. Riprova.', 'Errore di salvataggio')
@@ -46,7 +60,7 @@ export function AddExpenseModal({ categories, onAdd, onClose }: Props) {
     <BottomSheet onClose={onClose}>
       {/* Header */}
       <div className="flex items-center justify-between px-6 pt-4 sm:pt-6 pb-4 border-b border-surface-100 dark:border-surface-700 flex-shrink-0">
-        <h2 className="text-lg font-bold text-surface-900 dark:text-surface-50">Nuova spesa</h2>
+        <h2 className="text-lg font-bold text-surface-900 dark:text-surface-50">{isEdit ? 'Modifica spesa' : 'Nuova spesa'}</h2>
         <button className="btn-ghost p-1.5" onClick={onClose} aria-label="Chiudi">
           <X size={18} />
         </button>
@@ -57,7 +71,7 @@ export function AddExpenseModal({ categories, onAdd, onClose }: Props) {
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
 
           <div>
-            <label className="label">Importo (€)</label>
+            <label className="label">Importo ({currencySymbol(currency)})</label>
             <input
               className="input text-2xl font-bold"
               type="text"
@@ -122,7 +136,7 @@ export function AddExpenseModal({ categories, onAdd, onClose }: Props) {
             Annulla
           </button>
           <button type="submit" className="btn-primary flex-1 justify-center">
-            Aggiungi spesa
+            {isEdit ? 'Salva modifiche' : 'Aggiungi spesa'}
           </button>
         </div>
       </form>

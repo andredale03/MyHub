@@ -2,7 +2,7 @@ import {
   createContext, useContext, useEffect, useState, useCallback, type ReactNode,
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { supabase, isSupabaseConfigured, authBypass } from '../lib/supabase'
 
 export interface Profile {
   id: string
@@ -10,6 +10,8 @@ export interface Profile {
   subscription_status: string | null
   /** Fine del periodo corrente (ISO), per mostrare la data di rinnovo. */
   subscription_current_period_end: string | null
+  /** L'utente può gestire il catalogo app dall'area /admin. */
+  is_admin: boolean | null
 }
 
 interface AuthValue {
@@ -21,6 +23,8 @@ interface AuthValue {
   profile: Profile | null
   /** L'abbonamento è attivo o in prova → sblocca tutte le app (modello Setapp). */
   subscriptionActive: boolean
+  /** L'utente è amministratore (può gestire il catalogo). */
+  isAdmin: boolean
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
   signUp: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
@@ -43,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) return
     const { data } = await supabase
       .from('profiles')
-      .select('id, subscription_status, subscription_current_period_end')
+      .select('id, subscription_status, subscription_current_period_end, is_admin')
       .eq('id', userId)
       .maybeSingle()
     setProfile((data as Profile) ?? null)
@@ -91,14 +95,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) await loadProfile(user.id)
   }, [user, loadProfile])
 
-  const subscriptionActive = Boolean(
+  const subscriptionActive = authBypass || Boolean(
     profile?.subscription_status && ACTIVE_STATUSES.includes(profile.subscription_status),
   )
+
+  const isAdmin = Boolean(profile?.is_admin)
 
   // Modello Setapp: un abbonamento attivo sblocca tutte le app del catalogo.
   // In modalità demo (Supabase non configurato) tutto è accessibile.
   const hasAccess = useCallback(
-    (_appId: string) => !isSupabaseConfigured || subscriptionActive,
+    (_appId: string) => !isSupabaseConfigured || authBypass || subscriptionActive,
     [subscriptionActive],
   )
 
@@ -109,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     profile,
     subscriptionActive,
+    isAdmin,
     signInWithPassword,
     signUp,
     signOut,

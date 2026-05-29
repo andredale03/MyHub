@@ -10,6 +10,16 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
  */
 export const isSupabaseConfigured = Boolean(url && anonKey)
 
+/**
+ * Bypass dell'autenticazione: se `VITE_AUTH_BYPASS=true`, le guardie delle app
+ * (RequireAccess) lasciano passare senza login né abbonamento, anche con Supabase
+ * configurato. Pensato per lo SVILUPPO, per non dover fare login ogni volta.
+ * NON abilitarlo in produzione.
+ */
+export const authBypass = ['true', '1'].includes(
+  (import.meta.env.VITE_AUTH_BYPASS ?? '').toLowerCase(),
+)
+
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(url!, anonKey!)
   : null

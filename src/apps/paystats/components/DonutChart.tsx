@@ -1,17 +1,20 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import type { Category, Expense } from '../types'
+import { formatMoney } from '../format'
 
 interface Props {
   expenses: Expense[]
   categories: Category[]
+  year: number
+  month: number
+  currency: string
   dark?: boolean
 }
 
-export function DonutChart({ expenses, categories }: Props) {
-  const now = new Date()
+export function DonutChart({ expenses, categories, year, month, currency }: Props) {
   const monthExp = expenses.filter(e => {
     const d = new Date(e.date)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    return d.getMonth() === month && d.getFullYear() === year
   })
 
   const data = categories
@@ -39,7 +42,7 @@ export function DonutChart({ expenses, categories }: Props) {
     return (
       <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-xl px-3 py-2 shadow-card text-sm">
         <p className="font-medium text-surface-800 dark:text-surface-100">{item.name}</p>
-        <p className="text-surface-600 dark:text-surface-300">€{item.value.toFixed(2)}</p>
+        <p className="text-surface-600 dark:text-surface-300">{formatMoney(item.value, currency, 2)}</p>
         <p className="text-surface-400 dark:text-surface-500 text-xs">{((item.value / total) * 100).toFixed(1)}%</p>
       </div>
     )
@@ -59,7 +62,7 @@ export function DonutChart({ expenses, categories }: Props) {
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-[10px] font-semibold text-surface-400 dark:text-surface-500 uppercase tracking-widest">Totale</span>
           <span className="text-xl font-bold text-surface-900 dark:text-surface-50">
-            €{total.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            {formatMoney(total, currency)}
           </span>
         </div>
       </div>
@@ -70,7 +73,7 @@ export function DonutChart({ expenses, categories }: Props) {
             <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
             <span className="text-xs text-surface-500 dark:text-surface-400 truncate flex-1">{d.name}</span>
             <span className="text-xs font-semibold text-surface-700 dark:text-surface-200 flex-shrink-0">
-              €{d.value.toFixed(0)}
+              {formatMoney(d.value, currency)}
             </span>
           </div>
         ))}

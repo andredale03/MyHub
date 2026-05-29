@@ -7,11 +7,11 @@ Indice della documentazione del progetto.
 
 | File | Contenuto |
 |------|-----------|
-| [architecture.md](architecture.md) | Monorepo, shell, routing, auth, scelte tecniche |
-| [data-model.md](data-model.md) | Schema Supabase, entitlement, env, persistenza app figlie |
+| [architecture.md](architecture.md) | Monorepo, shell, routing, auth, pagamenti, scelte tecniche |
+| [data-model.md](data-model.md) | Schema Supabase, entitlement, ruolo admin, Stripe, dati PayStats per-utente, env |
 | [adding-apps.md](adding-apps.md) | Come aggiungere un'app (interna o esterna) |
 | [design-system.md](design-system.md) | Colori, icone, gradienti e classi condivise |
-| [deployment.md](deployment.md) | Deploy su Vercel + configurazione Supabase |
+| [deployment.md](deployment.md) | Deploy su Vercel + setup Supabase, Stripe e Node 22 |
 | [CHANGELOG.md](CHANGELOG.md) | Log delle modifiche nel tempo |
 
 ## Avvio rapido

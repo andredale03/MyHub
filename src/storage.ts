@@ -74,6 +74,46 @@ function rowToEntry(r: AppRow, index: number): AppEntry {
   }
 }
 
+/** True se il catalogo è gestito da Supabase (non solo localStorage). */
+export const isRemoteCatalog = Boolean(supabase)
+
+/** Converte un AppEntry nella riga della tabella `apps`. */
+function entryToRow(entry: AppEntry) {
+  return {
+    id: entry.id,
+    name: entry.name,
+    description: entry.description || null,
+    route: entry.route?.trim() ? entry.route.trim() : null,
+    url: entry.url?.trim() ? entry.url.trim() : null,
+    icon: entry.icon || null,
+    color: entry.color || null,
+    status: entry.status,
+    sort_order: entry.order,
+  }
+}
+
+/** Inserisce o aggiorna un'app nel catalogo Supabase (richiede ruolo admin). */
+export async function upsertAppRemote(entry: AppEntry): Promise<{ error: string | null }> {
+  if (!supabase) return { error: 'Supabase non configurato.' }
+  const { error } = await supabase.from('apps').upsert(entryToRow(entry))
+  return { error: error?.message ?? null }
+}
+
+/** Elimina un'app dal catalogo Supabase (richiede ruolo admin). */
+export async function deleteAppRemote(id: string): Promise<{ error: string | null }> {
+  if (!supabase) return { error: 'Supabase non configurato.' }
+  const { error } = await supabase.from('apps').delete().eq('id', id)
+  return { error: error?.message ?? null }
+}
+
+/** Persiste l'ordine (sort_order) dell'intero catalogo su Supabase. */
+export async function saveOrderRemote(apps: AppEntry[]): Promise<{ error: string | null }> {
+  if (!supabase) return { error: 'Supabase non configurato.' }
+  const rows = apps.map((a, i) => entryToRow({ ...a, order: i }))
+  const { error } = await supabase.from('apps').upsert(rows)
+  return { error: error?.message ?? null }
+}
+
 /**
  * Carica il catalogo dalla tabella `apps` di Supabase quando configurato.
  * In caso di errore, assenza di righe o modalità demo, ricade su localStorage

@@ -52,9 +52,11 @@ e abbonamento.
 
 Tre modi (in ordine di praticità):
 
-- **Admin** (`/admin`, PIN default `1234`): "Nuova app" → scegli **Tipo: Interna**
-  e compila il campo **Route** (es. `/app/myapp`). Il form normalizza i dati
-  (un'app interna non ha `url`).
+- **Admin** (`/admin`): "Nuova app" → scegli **Tipo: Interna** e compila il campo
+  **Route** (es. `/app/myapp`). Il form normalizza i dati (un'app interna non ha
+  `url`). Con Supabase l'area è riservata all'**admin loggato** (`is_admin`) e le
+  modifiche vanno direttamente sulla tabella `apps`; in modalità demo è protetta
+  dal PIN (default `1234`) e salva in locale.
 - **Supabase** (se il catalogo è servito dal DB): inserisci una riga nella tabella
   `apps` con `route` valorizzato. Vedi sotto "Catalogo da Supabase".
 - **Codice**: aggiungi una voce a `DEFAULT_APPS` in `src/storage.ts`:

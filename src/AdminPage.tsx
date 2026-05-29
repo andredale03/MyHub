@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, GripVertical, Save,
   KeyRound, Eye, EyeOff, LayoutGrid, Pencil, X, Check,
+  ShieldAlert, LogOut,
 } from 'lucide-react'
 import {
-  loadApps, saveApps, loadPin, savePin, generateId,
+  saveApps, fetchApps, loadPin, savePin, generateId,
+  isRemoteCatalog, upsertAppRemote, deleteAppRemote, saveOrderRemote,
   type AppEntry,
 } from './storage'
+import { useAuth } from './auth/AuthContext'
 
 const GRADIENTS = [
   'from-indigo-500 to-purple-600',
@@ -110,6 +113,39 @@ function PinScreen({ onUnlock }: { onUnlock: () => void }) {
             className="w-full mt-3 text-sm text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors py-1"
           >
             Torna al hub
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Schermata "non autorizzato" (loggato ma non admin) ─────────────────────────
+
+function NotAdminScreen({ onSignOut }: { onSignOut: () => void }) {
+  const navigate = useNavigate()
+  return (
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm text-center">
+        <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-4">
+          <ShieldAlert className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+        </div>
+        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-1">Accesso riservato</h1>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+          Questo account non ha i permessi di amministratore per gestire il catalogo.
+        </p>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => navigate('/')}
+            className="w-full bg-brand-600 hover:bg-brand-700 text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
+          >
+            Torna all'hub
+          </button>
+          <button
+            onClick={onSignOut}
+            className="w-full inline-flex items-center justify-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 py-1"
+          >
+            <LogOut className="w-4 h-4" /> Esci
           </button>
         </div>
       </div>
@@ -295,6 +331,7 @@ function AppForm({
 // ── Admin page ────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
+  const { configured, loading, user, isAdmin, signOut } = useAuth()
   const [unlocked, setUnlocked] = useState(false)
   const [apps, setApps] = useState<AppEntry[]>([])
   const [adding, setAdding] = useState(false)
@@ -304,30 +341,53 @@ export default function AdminPage() {
   const [pinSaved, setPinSaved] = useState(false)
   const [dragging, setDragging] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    if (unlocked) setApps(loadApps())
-  }, [unlocked])
+  // Accesso: con Supabase serve l'admin loggato; in demo basta il PIN.
+  const authorized = configured ? Boolean(user && isAdmin) : unlocked
 
-  const persist = (next: AppEntry[]) => {
+  useEffect(() => {
+    if (authorized) fetchApps().then(setApps)
+  }, [authorized])
+
+  // Esegue una mutazione remota (se catalogo Supabase) gestendo gli errori:
+  // in caso di errore ripristina dal server e mostra un messaggio.
+  const runRemote = async (op: () => Promise<{ error: string | null }>) => {
+    if (!isRemoteCatalog) return
+    const { error: err } = await op()
+    if (err) {
+      setError(err)
+      fetchApps().then(setApps)
+    } else {
+      setError(null)
+    }
+  }
+
+  // Aggiorna stato + cache locale; se remoto, lancia anche la mutazione su Supabase.
+  const persistLocal = (next: AppEntry[]) => {
     setApps(next)
     saveApps(next)
   }
 
   const addApp = (data: Omit<AppEntry, 'id' | 'order'>) => {
-    const next = [...apps, { ...data, id: generateId(), order: apps.length }]
-    persist(next)
+    const entry: AppEntry = { ...data, id: generateId(), order: apps.length }
+    persistLocal([...apps, entry])
     setAdding(false)
+    void runRemote(() => upsertAppRemote(entry))
   }
 
   const updateApp = (id: string, data: Omit<AppEntry, 'id' | 'order'>) => {
-    persist(apps.map(a => a.id === id ? { ...a, ...data } : a))
+    const next = apps.map(a => (a.id === id ? { ...a, ...data } : a))
+    persistLocal(next)
     setEditingId(null)
+    const updated = next.find(a => a.id === id)
+    if (updated) void runRemote(() => upsertAppRemote(updated))
   }
 
   const deleteApp = (id: string) => {
-    persist(apps.filter(a => a.id !== id))
+    persistLocal(apps.filter(a => a.id !== id))
+    void runRemote(() => deleteAppRemote(id))
   }
 
   // Drag-and-drop reorder
@@ -344,9 +404,11 @@ export default function AdminPage() {
     const next = [...apps]
     const [moved] = next.splice(from, 1)
     next.splice(to, 0, moved)
-    persist(next)
+    const reordered = next.map((a, i) => ({ ...a, order: i }))
+    persistLocal(reordered)
     setDragging(null)
     setDragOver(null)
+    void runRemote(() => saveOrderRemote(reordered))
   }
 
   const handleSavePin = () => {
@@ -358,7 +420,20 @@ export default function AdminPage() {
     setTimeout(() => setPinSaved(false), 2000)
   }
 
-  if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />
+  // ── Gating accesso ──────────────────────────────────────────────────────────
+  if (configured) {
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+          <div className="text-sm text-zinc-400">Caricamento…</div>
+        </div>
+      )
+    }
+    if (!user) return <Navigate to="/login" state={{ from: '/admin' }} replace />
+    if (!isAdmin) return <NotAdminScreen onSignOut={async () => { await signOut(); navigate('/') }} />
+  } else if (!unlocked) {
+    return <PinScreen onUnlock={() => setUnlocked(true)} />
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 font-sans">
@@ -376,17 +451,36 @@ export default function AdminPage() {
               Admin
             </span>
           </div>
-          <button
-            onClick={() => { setAdding(true); setEditingId(null) }}
-            disabled={adding}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white text-sm font-medium transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" /> Nuova app
-          </button>
+          <div className="flex items-center gap-2">
+            {configured && (
+              <button
+                onClick={async () => { await signOut(); navigate('/') }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                title="Esci"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Esci
+              </button>
+            )}
+            <button
+              onClick={() => { setAdding(true); setEditingId(null) }}
+              disabled={adding}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white text-sm font-medium transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Nuova app
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+        {/* Banner errore catalogo */}
+        {error && (
+          <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-600 dark:text-red-400 flex items-start justify-between gap-2">
+            <span>Errore salvataggio: {error}</span>
+            <button onClick={() => setError(null)} className="underline underline-offset-2 hover:no-underline shrink-0">Ok</button>
+          </div>
+        )}
 
         {/* Add form */}
         {adding && (
@@ -479,7 +573,8 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {/* PIN settings */}
+        {/* PIN settings — solo in modalità demo (senza Supabase) */}
+        {!configured && (
         <section className="border-t border-zinc-200 dark:border-zinc-800 pt-8">
           <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">
             Sicurezza
@@ -526,6 +621,7 @@ export default function AdminPage() {
             )}
           </div>
         </section>
+        )}
       </main>
     </div>
   )

@@ -4,12 +4,14 @@ const KEYS = {
   categories: 'paystats_categories',
   expenses:   'paystats_expenses',
   income:     'paystats_income',
+  currency:   'paystats_currency',
   seeded:     'paystats_seeded',
 }
 
 const DEFAULT_INCOME = 2500
+const DEFAULT_CURRENCY = 'EUR'
 
-const DEFAULT_CATEGORIES: Category[] = [
+export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'food',          name: 'Cibo & Ristoranti', color: '#f97316', icon: '🍔', budget: 400 },
   { id: 'transport',     name: 'Trasporti',          color: '#3b82f6', icon: '🚗', budget: 150 },
   { id: 'entertainment', name: 'Svago',              color: '#a855f7', icon: '🎬', budget: 200 },
@@ -190,6 +192,14 @@ export const storage = {
 
   setIncome(income: number): void {
     write(KEYS.income, income)
+  },
+
+  getCurrency(): string {
+    return read<string>(KEYS.currency, DEFAULT_CURRENCY)
+  },
+
+  setCurrency(currency: string): void {
+    write(KEYS.currency, currency)
   },
 
   resetToDemo(): void {

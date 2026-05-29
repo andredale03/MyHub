@@ -1,5 +1,9 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Plus, LayoutDashboard, List, TrendingDown, Tag } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, LayoutDashboard, List, TrendingDown, Tag, ChevronLeft, ChevronRight, SlidersHorizontal, User } from 'lucide-react'
+import type { Expense } from './types'
+import { formatMoney } from './format'
+import { isFullWidth, loadLayout, saveLayout, type WidgetKey, type WidgetState } from './dashboard'
 import { useExpenses } from './hooks/useExpenses'
 import { useTheme } from './hooks/useTheme'
 import { useToast } from './context/ToastContext'
@@ -13,26 +17,36 @@ import { CalendarHeatmap } from './components/CalendarHeatmap'
 import { InsightsPanel } from './components/InsightsPanel'
 import { BudgetProgress } from './components/BudgetProgress'
 import { SettingsMenu } from './components/SettingsMenu'
+import { CustomizeDashboardModal } from './components/CustomizeDashboardModal'
 
 type View  = 'dashboard' | 'expenses'
 type Modal = 'add' | 'categories' | null
 
-function fmt(n: number, decimals = 0) {
-  return n.toLocaleString('it-IT', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-}
-
 export default function App() {
   const {
-    categories, expenses, income,
-    setIncome, addCategory, updateCategory, deleteCategory,
-    addExpense, deleteExpense, resetToDemo,
+    categories, expenses, income, currency, loading,
+    setIncome, setCurrency, addCategory, updateCategory, deleteCategory,
+    addExpense, updateExpense, deleteExpense, resetToDemo,
   } = useExpenses()
   const { toast }             = useToast()
   const { theme, toggle: toggleTheme } = useTheme()
+  const navigate = useNavigate()
   const [view,      setView]      = useState<View>('dashboard')
   const [modal,     setModal]     = useState<Modal>(null)
+  const [editing,   setEditing]   = useState<Expense | null>(null)
   const [filterCat, setFilterCat] = useState<string>('all')
+  // Mese di riferimento per la dashboard (primo giorno del mese selezionato).
+  const [monthDate, setMonthDate] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
+  // Layout personalizzabile della dashboard (preferenza per-dispositivo).
+  const [layout, setLayoutState] = useState<WidgetState[]>(loadLayout)
+  const [customizing, setCustomizing] = useState(false)
   const dark = theme === 'dark'
+
+  const setLayout = useCallback((l: WidgetState[]) => { setLayoutState(l); saveLayout(l) }, [])
+
+  const money = useCallback((n: number, decimals = 0) => formatMoney(n, currency, decimals), [currency])
+
+  const closeExpenseModal = useCallback(() => { setModal(null); setEditing(null) }, [])
 
   const handleDeleteExpense = useCallback((id: string) => {
     try {
@@ -43,32 +57,46 @@ export default function App() {
     }
   }, [deleteExpense, toast])
 
-  // ── dashboard stats ────────────────────────────────────────────────────────
+  const handleEditExpense = useCallback((exp: Expense) => {
+    setEditing(exp)
+    setModal('add')
+  }, [])
+
+  // ── dashboard stats (mese di riferimento) ───────────────────────────────────
   const now          = new Date()
-  const daysInMonth  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const daysPassed   = now.getDate()
-  const daysLeft     = daysInMonth - daysPassed
+  const refYear      = monthDate.getFullYear()
+  const refMonth     = monthDate.getMonth()
+  const isCurrentMonth = refYear === now.getFullYear() && refMonth === now.getMonth()
+  const daysInMonth  = new Date(refYear, refMonth + 1, 0).getDate()
+  // Nel mese corrente i giorni "passati" sono fino a oggi; nei mesi chiusi è tutto il mese.
+  const daysPassed   = isCurrentMonth ? now.getDate() : daysInMonth
+  const daysLeft     = isCurrentMonth ? daysInMonth - daysPassed : 0
 
   const monthExpenses = useMemo(() => expenses.filter(e => {
     const d = new Date(e.date)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-  }), [expenses])
+    return d.getMonth() === refMonth && d.getFullYear() === refYear
+  }), [expenses, refMonth, refYear])
 
   const prevMonthExpenses = useMemo(() => {
-    const p = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const p = new Date(refYear, refMonth - 1, 1)
     return expenses.filter(e => {
       const d = new Date(e.date)
       return d.getMonth() === p.getMonth() && d.getFullYear() === p.getFullYear()
     })
-  }, [expenses])
+  }, [expenses, refMonth, refYear])
 
   const totalSpent   = useMemo(() => monthExpenses.reduce((s, e) => s + e.amount, 0), [monthExpenses])
   const prevTotal    = useMemo(() => prevMonthExpenses.reduce((s, e) => s + e.amount, 0), [prevMonthExpenses])
   const balance      = income - totalSpent
   const dailyAvg     = daysPassed > 0 ? totalSpent / daysPassed : 0
-  const projected    = totalSpent + dailyAvg * daysLeft
+  // Proiezione solo per il mese corrente; nei mesi chiusi il "previsto" è l'effettivo.
+  const projected    = isCurrentMonth ? totalSpent + dailyAvg * daysLeft : totalSpent
   const predicted    = income - projected
   const vsLast       = prevTotal > 0 ? ((totalSpent / prevTotal) - 1) * 100 : 0
+
+  const monthLabel = monthDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+  const gotoPrevMonth = () => setMonthDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))
+  const gotoNextMonth = () => { if (!isCurrentMonth) setMonthDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1)) }
 
   const recent = useMemo(() =>
     [...expenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8),
@@ -79,6 +107,69 @@ export default function App() {
     () => filterCat === 'all' ? expenses : expenses.filter(e => e.categoryId === filterCat),
     [expenses, filterCat]
   )
+
+  // Rende un widget della dashboard per chiave (wrapper card + col-span).
+  const renderWidget = (key: WidgetKey) => {
+    const cls = `card ${isFullWidth(key) ? 'md:col-span-2' : ''}`
+    switch (key) {
+      case 'insights':
+        return (
+          <div key={key} className={cls}>
+            <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-3 flex items-center gap-1.5">💡 Smart Insights</h2>
+            <InsightsPanel expenses={expenses} categories={categories} income={income} year={refYear} month={refMonth} currency={currency} />
+          </div>
+        )
+      case 'donut':
+        return (
+          <div key={key} className={cls}>
+            <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-4">Distribuzione spese</h2>
+            <DonutChart expenses={expenses} categories={categories} year={refYear} month={refMonth} currency={currency} dark={dark} />
+          </div>
+        )
+      case 'budget':
+        return (
+          <div key={key} className={cls}>
+            <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-4">Budget per categoria</h2>
+            <BudgetProgress expenses={expenses} categories={categories} year={refYear} month={refMonth} currency={currency} />
+          </div>
+        )
+      case 'trend':
+        return (
+          <div key={key} className={cls}>
+            <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-1">Andamento giornaliero</h2>
+            <p className="text-xs text-surface-400 dark:text-surface-500 mb-4">Spese per giorno — questo mese vs mese scorso</p>
+            <TrendChart expenses={expenses} year={refYear} month={refMonth} currency={currency} dark={dark} />
+          </div>
+        )
+      case 'category':
+        return (
+          <div key={key} className={cls}>
+            <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-1">Confronto categorie</h2>
+            <p className="text-xs text-surface-400 dark:text-surface-500 mb-4">Questo mese vs mese scorso</p>
+            <CategoryBarChart expenses={expenses} categories={categories} year={refYear} month={refMonth} currency={currency} dark={dark} />
+          </div>
+        )
+      case 'calendar':
+        return (
+          <div key={key} className={cls}>
+            <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-4">Calendario spese</h2>
+            <CalendarHeatmap expenses={expenses} year={refYear} month={refMonth} currency={currency} />
+          </div>
+        )
+      case 'recent':
+        return (
+          <div key={key} className={cls}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50">Ultime transazioni</h2>
+              <button className="btn-ghost text-xs" onClick={() => setView('expenses')}>Vedi tutte →</button>
+            </div>
+            <ExpenseList expenses={recent} categories={categories} currency={currency} onDelete={handleDeleteExpense} onEdit={handleEditExpense} />
+          </div>
+        )
+      default:
+        return null
+    }
+  }
 
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950 flex transition-colors duration-200">
@@ -111,6 +202,8 @@ export default function App() {
             onToggleTheme={toggleTheme}
             income={income}
             onSetIncome={setIncome}
+            currency={currency}
+            onSetCurrency={setCurrency}
             onResetDemo={resetToDemo}
           />
         </div>
@@ -134,6 +227,8 @@ export default function App() {
             onToggleTheme={toggleTheme}
             income={income}
             onSetIncome={setIncome}
+            currency={currency}
+            onSetCurrency={setCurrency}
             onResetDemo={resetToDemo}
           />
         </header>
@@ -142,111 +237,105 @@ export default function App() {
 
           {/* ── Dashboard view ──────────────────────────────────────────────── */}
           {view === 'dashboard' && (
+            loading ? (
+              <DashboardLoader />
+            ) : expenses.length === 0 ? (
+              <EmptyDashboard
+                income={income}
+                currency={currency}
+                onAddExpense={() => setModal('add')}
+                onManageCategories={() => setModal('categories')}
+              />
+            ) : (
             <>
+              {/* Selettore mese */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <button className="btn-ghost p-2 rounded-xl" onClick={gotoPrevMonth} aria-label="Mese precedente">
+                    <ChevronLeft size={18} />
+                  </button>
+                  <span className="text-sm font-semibold text-surface-700 dark:text-surface-200 capitalize min-w-[9rem] text-center">
+                    {monthLabel}
+                  </span>
+                  <button
+                    className="btn-ghost p-2 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed"
+                    onClick={gotoNextMonth}
+                    disabled={isCurrentMonth}
+                    aria-label="Mese successivo"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-1">
+                  {!isCurrentMonth && (
+                    <button
+                      className="btn-ghost text-xs"
+                      onClick={() => setMonthDate(new Date(now.getFullYear(), now.getMonth(), 1))}
+                    >
+                      Oggi
+                    </button>
+                  )}
+                  <button
+                    className="btn-ghost text-xs"
+                    onClick={() => setCustomizing(true)}
+                    aria-label="Personalizza dashboard"
+                  >
+                    <SlidersHorizontal size={15} /> Personalizza
+                  </button>
+                </div>
+              </div>
+
               {/* Stats grid */}
               <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
                 <StatCard
                   label="Reddito mensile"
-                  value={`€${fmt(income)}`}
+                  value={money(income)}
                   sub="netto/mese"
                   accent="bg-emerald-500"
                 />
                 <StatCard
                   label="Spese mese"
-                  value={`€${fmt(totalSpent)}`}
+                  value={money(totalSpent)}
                   sub={`${monthExpenses.length} transazioni`}
                   accent="bg-red-400"
                   delta={prevTotal > 0 ? vsLast : undefined}
                 />
                 <StatCard
                   label="Saldo"
-                  value={`€${fmt(balance)}`}
+                  value={money(balance)}
                   sub="rimanente"
                   accent={balance >= 0 ? 'bg-brand-500' : 'bg-red-500'}
                 />
                 <StatCard
                   label="Media giornaliera"
-                  value={`€${fmt(dailyAvg)}`}
-                  sub={`${daysLeft} giorni rimasti`}
+                  value={money(dailyAvg)}
+                  sub={isCurrentMonth ? `${daysLeft} giorni rimasti` : `su ${daysInMonth} giorni`}
                   accent="bg-amber-500"
                 />
                 <StatCard
-                  label="Risparmio previsto"
-                  value={`€${fmt(Math.abs(predicted))}`}
-                  sub={predicted >= 0 ? 'a fine mese' : 'deficit previsto'}
+                  label={isCurrentMonth ? 'Risparmio previsto' : 'Risparmio'}
+                  value={money(Math.abs(predicted))}
+                  sub={isCurrentMonth
+                    ? (predicted >= 0 ? 'a fine mese' : 'deficit previsto')
+                    : (predicted >= 0 ? 'questo mese' : 'deficit')}
                   accent={predicted >= 0 ? 'bg-violet-500' : 'bg-red-500'}
                   className="col-span-2 xl:col-span-1"
                   negative={predicted < 0}
                 />
               </div>
 
-              {/* Smart insights */}
-              <div className="card">
-                <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-3 flex items-center gap-1.5">
-                  💡 Smart Insights
-                </h2>
-                <InsightsPanel expenses={expenses} categories={categories} income={income} />
-              </div>
-
-              {/* Donut chart + Budget progress */}
+              {/* Widget personalizzabili (ordine e visibilità da "Personalizza") */}
               <div className="grid md:grid-cols-2 gap-5">
-                <div className="card">
-                  <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-4">
-                    Distribuzione spese
-                  </h2>
-                  <DonutChart expenses={expenses} categories={categories} dark={dark} />
-                </div>
-                <div className="card">
-                  <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-4">
-                    Budget per categoria
-                  </h2>
-                  <BudgetProgress expenses={expenses} categories={categories} />
-                </div>
+                {layout.filter(w => w.visible).map(w => renderWidget(w.key))}
               </div>
 
-              {/* Spending trend line chart */}
-              <div className="card">
-                <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-1">
-                  Andamento giornaliero
-                </h2>
-                <p className="text-xs text-surface-400 dark:text-surface-500 mb-4">
-                  Spese per giorno — questo mese vs mese scorso
+              {layout.every(w => !w.visible) && (
+                <p className="text-sm text-surface-400 dark:text-surface-500 text-center py-8">
+                  Nessun riquadro visibile. Usa <strong>Personalizza</strong> per mostrarne qualcuno.
                 </p>
-                <TrendChart expenses={expenses} dark={dark} />
-              </div>
-
-              {/* Category comparison + Calendar */}
-              <div className="grid md:grid-cols-2 gap-5">
-                <div className="card">
-                  <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-1">
-                    Confronto categorie
-                  </h2>
-                  <p className="text-xs text-surface-400 dark:text-surface-500 mb-4">
-                    Questo mese vs mese scorso
-                  </p>
-                  <CategoryBarChart expenses={expenses} categories={categories} dark={dark} />
-                </div>
-                <div className="card">
-                  <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50 mb-4">
-                    Calendario spese
-                  </h2>
-                  <CalendarHeatmap expenses={expenses} />
-                </div>
-              </div>
-
-              {/* Recent transactions */}
-              <div className="card">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-bold text-surface-900 dark:text-surface-50">
-                    Ultime transazioni
-                  </h2>
-                  <button className="btn-ghost text-xs" onClick={() => setView('expenses')}>
-                    Vedi tutte →
-                  </button>
-                </div>
-                <ExpenseList expenses={recent} categories={categories} onDelete={handleDeleteExpense} />
-              </div>
+              )}
             </>
+            )
           )}
 
           {/* ── Expenses view ───────────────────────────────────────────────── */}
@@ -278,7 +367,7 @@ export default function App() {
                 ))}
               </div>
 
-              <ExpenseList expenses={filtered} categories={categories} onDelete={handleDeleteExpense} />
+              <ExpenseList expenses={filtered} categories={categories} currency={currency} onDelete={handleDeleteExpense} onEdit={handleEditExpense} />
             </div>
           )}
 
@@ -302,11 +391,20 @@ export default function App() {
         </button>
         <MobileNavItem icon={<Tag size={20} />} label="Categorie"
           onClick={() => setModal('categories')} />
+        <MobileNavItem icon={<User size={20} />} label="Account"
+          onClick={() => navigate('/account')} />
       </nav>
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
       {modal === 'add' && (
-        <AddExpenseModal categories={categories} onAdd={addExpense} onClose={() => setModal(null)} />
+        <AddExpenseModal
+          categories={categories}
+          initial={editing}
+          currency={currency}
+          onAdd={addExpense}
+          onUpdate={updateExpense}
+          onClose={closeExpenseModal}
+        />
       )}
       {modal === 'categories' && (
         <ManageCategoriesModal
@@ -317,11 +415,65 @@ export default function App() {
           onClose={() => setModal(null)}
         />
       )}
+      {customizing && (
+        <CustomizeDashboardModal
+          layout={layout}
+          onChange={setLayout}
+          onClose={() => setCustomizing(false)}
+        />
+      )}
     </div>
   )
 }
 
 // ── Local components ───────────────────────────────────────────────────────────
+
+function DashboardLoader() {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="w-10 h-10 rounded-full border-2 border-surface-200 dark:border-surface-700 border-t-brand-500 animate-spin mb-4" />
+      <p className="text-sm text-surface-400 dark:text-surface-500">Carico i tuoi dati…</p>
+    </div>
+  )
+}
+
+function EmptyDashboard({
+  income, currency, onAddExpense, onManageCategories,
+}: {
+  income: number
+  currency: string
+  onAddExpense: () => void
+  onManageCategories: () => void
+}) {
+  return (
+    <div className="card flex flex-col items-center text-center py-12 px-6 max-w-xl mx-auto">
+      <div className="w-16 h-16 rounded-2xl bg-brand-500 flex items-center justify-center mb-5 shadow-card-lg">
+        <TrendingDown size={28} className="text-white" />
+      </div>
+      <h2 className="text-xl font-bold text-surface-900 dark:text-surface-50">Benvenuto in PayStats</h2>
+      <p className="text-surface-500 dark:text-surface-400 mt-2 max-w-sm">
+        Inizia a tracciare le tue spese: aggiungi la prima per veder comparire grafici,
+        budget e insight sulle tue abitudini.
+      </p>
+
+      <div className="flex flex-col sm:flex-row gap-3 mt-6 w-full sm:w-auto">
+        <button className="btn-primary justify-center" onClick={onAddExpense}>
+          <Plus size={16} /> Aggiungi la prima spesa
+        </button>
+        <button className="btn-secondary justify-center" onClick={onManageCategories}>
+          <Tag size={16} /> Gestisci categorie
+        </button>
+      </div>
+
+      <div className="mt-8 pt-6 border-t border-surface-100 dark:border-surface-800 w-full">
+        <p className="text-xs text-surface-400 dark:text-surface-500">
+          Reddito mensile impostato: <span className="font-semibold text-surface-600 dark:text-surface-300">{formatMoney(income, currency)}</span>
+          {' '}· puoi cambiarlo dalle impostazioni ⚙️
+        </p>
+      </div>
+    </div>
+  )
+}
 
 function StatCard({
   label, value, sub, accent, delta, className, negative,

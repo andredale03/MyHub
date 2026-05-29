@@ -1,16 +1,18 @@
 import type { Category, Expense } from '../types'
+import { formatMoney } from '../format'
 
 interface Props {
   expenses: Expense[]
   categories: Category[]
+  year: number
+  month: number
+  currency: string
 }
 
-export function BudgetProgress({ expenses, categories }: Props) {
-  const now = new Date()
-
+export function BudgetProgress({ expenses, categories, year, month, currency }: Props) {
   const monthExp = expenses.filter(e => {
     const d = new Date(e.date)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    return d.getMonth() === month && d.getFullYear() === year
   })
 
   const withBudget = categories.filter(c => c.budget && c.budget > 0)
@@ -42,7 +44,7 @@ export function BudgetProgress({ expenses, categories }: Props) {
               <span className={`text-xs font-semibold tabular-nums ${
                 over ? 'text-red-500' : warn ? 'text-amber-500' : 'text-surface-500 dark:text-surface-400'
               }`}>
-                €{spent.toFixed(0)} / €{cat.budget}
+                {formatMoney(spent, currency)} / {formatMoney(cat.budget!, currency)}
               </span>
             </div>
             <div className="h-1.5 bg-surface-100 dark:bg-surface-700 rounded-full overflow-hidden">
@@ -56,7 +58,7 @@ export function BudgetProgress({ expenses, categories }: Props) {
             </div>
             {over && (
               <p className="text-[10px] text-red-500 mt-0.5">
-                Sforato di €{(spent - cat.budget!).toFixed(0)}
+                Sforato di {formatMoney(spent - cat.budget!, currency)}
               </p>
             )}
           </div>

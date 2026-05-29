@@ -20,19 +20,20 @@ export default {
           800: '#3730a3',
           900: '#312e81',
         },
-        // Palette neutra condivisa dalle app figlie (es. PayStats)
+        // Palette neutra condivisa dalle app figlie (es. PayStats).
+        // Scala "slate" elegante: dark = blu-grigio profondo, non nero.
         surface: {
-          50:  '#fafafa',
-          100: '#f4f4f5',
-          200: '#e4e4e7',
-          300: '#d4d4d8',
-          400: '#a1a1aa',
-          500: '#71717a',
-          600: '#52525b',
-          700: '#3f3f46',
-          800: '#27272a',
-          900: '#18181b',
-          950: '#09090b',
+          50:  '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#3b4a61',  // hover forte / elementi
+          800: '#334155',  // bordi, input, chip (dark)
+          900: '#1e293b',  // card, sidebar, modali (dark)
+          950: '#0f172a',  // sfondo app (dark)
         },
       },
       boxShadow: {

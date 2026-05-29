@@ -3,13 +3,14 @@ import { X, Plus, Trash2, Pencil, Check } from 'lucide-react'
 import type { Category } from '../types'
 import { useToast } from '../context/ToastContext'
 import { BottomSheet } from './BottomSheet'
+import { EmojiPicker } from './EmojiPicker'
 
 const PALETTE = [
   '#f97316','#eab308','#22c55e','#14b8a6',
   '#3b82f6','#6366f1','#a855f7','#ec4899',
   '#ef4444','#64748b',
 ]
-const ICONS = ['🍔','🚗','🎬','💊','🛍️','🏠','✈️','📚','🎮','☕','💪','🐾','🎵','💼','🎁']
+const DEFAULT_ICON = '🍔'
 
 interface Props {
   categories: Category[]
@@ -41,17 +42,11 @@ function CategoryForm({ form, setForm, onSubmit, onCancel, submitLabel }: FormPr
       />
       <div>
         <p className="label">Icona</p>
-        <div className="flex flex-wrap gap-1.5">
-          {ICONS.map(ic => (
-            <button key={ic} type="button"
-              onClick={() => setForm(f => ({ ...f, icon: ic }))}
-              className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
-                form.icon === ic
-                  ? 'bg-brand-100 dark:bg-brand-900/40 ring-2 ring-brand-400'
-                  : 'hover:bg-surface-100 dark:hover:bg-surface-700'
-              }`}
-            >{ic}</button>
-          ))}
+        <div className="flex items-center gap-3">
+          <EmojiPicker value={form.icon} onChange={ic => setForm(f => ({ ...f, icon: ic }))} />
+          <span className="text-xs text-surface-400 dark:text-surface-500">
+            Tocca per scegliere un'emoji
+          </span>
         </div>
       </div>
       <div>
@@ -109,7 +104,7 @@ function CategoryForm({ form, setForm, onSubmit, onCancel, submitLabel }: FormPr
   )
 }
 
-const BLANK: FormState = { name: '', color: PALETTE[0], icon: ICONS[0], budget: '' }
+const BLANK: FormState = { name: '', color: PALETTE[0], icon: DEFAULT_ICON, budget: '' }
 
 export function ManageCategoriesModal({ categories, onAdd, onUpdate, onDelete, onClose }: Props) {
   const { toast } = useToast()

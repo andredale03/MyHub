@@ -1,9 +1,13 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import type { Category, Expense } from '../types'
+import { currencySymbol, formatMoney } from '../format'
 
 interface Props {
   expenses: Expense[]
   categories: Category[]
+  year: number
+  month: number
+  currency: string
   dark?: boolean
 }
 
@@ -18,10 +22,9 @@ function monthTotals(expenses: Expense[], year: number, month: number): Record<s
   return totals
 }
 
-export function CategoryBarChart({ expenses, categories, dark }: Props) {
-  const now  = new Date()
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const curr = monthTotals(expenses, now.getFullYear(), now.getMonth())
+export function CategoryBarChart({ expenses, categories, year, month, currency, dark }: Props) {
+  const prev = new Date(year, month - 1, 1)
+  const curr = monthTotals(expenses, year, month)
   const last = monthTotals(expenses, prev.getFullYear(), prev.getMonth())
 
   const data = categories
@@ -46,7 +49,7 @@ export function CategoryBarChart({ expenses, categories, dark }: Props) {
       <div className="bg-white dark:bg-surface-800 border border-surface-100 dark:border-surface-700 rounded-xl px-3 py-2 shadow-card text-sm">
         <p className="font-semibold text-surface-700 dark:text-surface-200 mb-1">{label}</p>
         {payload.map((p, i) => (
-          <p key={i} className="text-xs" style={{ color: p.color }}>{p.name}: €{p.value.toFixed(2)}</p>
+          <p key={i} className="text-xs" style={{ color: p.color }}>{p.name}: {formatMoney(p.value, currency, 2)}</p>
         ))}
       </div>
     )
@@ -58,7 +61,7 @@ export function CategoryBarChart({ expenses, categories, dark }: Props) {
         <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
         <XAxis dataKey="name" tick={{ fill: axis, fontSize: 10 }} tickLine={false} axisLine={false} />
         <YAxis tick={{ fill: axis, fontSize: 11 }} tickLine={false} axisLine={false}
-          tickFormatter={v => `€${v}`} width={52} />
+          tickFormatter={v => `${currencySymbol(currency)}${v}`} width={52} />
         <Tooltip content={<CustomTooltip />} />
         <Legend wrapperStyle={{ fontSize: '12px' }} />
         <Bar dataKey="Questo mese" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={22} />

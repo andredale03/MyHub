@@ -1,7 +1,11 @@
 import type { Expense } from '../types'
+import { formatMoney } from '../format'
 
 interface Props {
   expenses: Expense[]
+  year: number
+  month: number
+  currency: string
 }
 
 const WEEKDAYS = ['L', 'M', 'M', 'G', 'V', 'S', 'D']
@@ -15,11 +19,11 @@ function intensity(amount: number, max: number): string {
   return 'bg-brand-700 dark:bg-brand-300 text-white dark:text-brand-900'
 }
 
-export function CalendarHeatmap({ expenses }: Props) {
+export function CalendarHeatmap({ expenses, year, month, currency }: Props) {
   const now    = new Date()
-  const year   = now.getFullYear()
-  const month  = now.getMonth()
-  const today  = now.getDate()
+  const isCurrentMonth = now.getFullYear() === year && now.getMonth() === month
+  // Solo nel mese corrente i giorni dopo "oggi" sono futuri; nei mesi passati no.
+  const today  = isCurrentMonth ? now.getDate() : 32
   const daysInMonth = new Date(year, month + 1, 0).getDate()
 
   // first weekday of month: 0=Sun → remap to Mon=0
@@ -35,7 +39,7 @@ export function CalendarHeatmap({ expenses }: Props) {
   })
 
   const maxSpend = Math.max(...Object.values(daily), 1)
-  const monthLabel = now.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+  const monthLabel = new Date(year, month, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
 
   type Cell = { day: number | null; amount: number; future: boolean }
   const cells: Cell[] = [
@@ -68,7 +72,7 @@ export function CalendarHeatmap({ expenses }: Props) {
           return (
             <div
               key={i}
-              title={cell.amount > 0 ? `${cell.day}: €${cell.amount.toFixed(2)}` : String(cell.day)}
+              title={cell.amount > 0 ? `${cell.day}: ${formatMoney(cell.amount, currency, 2)}` : String(cell.day)}
               className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium transition-colors ${cls}`}
             >
               {cell.day}

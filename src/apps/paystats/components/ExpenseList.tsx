@@ -1,15 +1,18 @@
-import { Trash2 } from 'lucide-react'
+import { Trash2, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
 import type { Category, Expense } from '../types'
+import { formatMoney } from '../format'
 
 interface Props {
   expenses: Expense[]
   categories: Category[]
+  currency: string
   onDelete: (id: string) => void
+  onEdit?: (exp: Expense) => void
 }
 
-export function ExpenseList({ expenses, categories, onDelete }: Props) {
+export function ExpenseList({ expenses, categories, currency, onDelete, onEdit }: Props) {
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]))
 
   if (expenses.length === 0) {
@@ -63,9 +66,18 @@ export function ExpenseList({ expenses, categories, onDelete }: Props) {
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
                 <span className="font-bold text-surface-900 dark:text-surface-50">
-                  €{exp.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatMoney(exp.amount, currency, 2)}
                 </span>
-                <button className="btn-danger p-1.5 opacity-0 group-hover:opacity-100" onClick={() => onDelete(exp.id)}>
+                {onEdit && (
+                  <button
+                    className="btn-ghost p-1.5 opacity-0 group-hover:opacity-100"
+                    onClick={() => onEdit(exp)}
+                    aria-label="Modifica spesa"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
+                <button className="btn-danger p-1.5 opacity-0 group-hover:opacity-100" onClick={() => onDelete(exp.id)} aria-label="Elimina spesa">
                   <Trash2 size={14} />
                 </button>
               </div>

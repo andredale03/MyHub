@@ -23,8 +23,13 @@ email                            text
 subscription_status              text   -- 'active' | 'trialing' | 'canceled' | null
 subscription_current_period_end  timestamptz
 stripe_customer_id               text
+is_admin                         boolean not null default false
 created_at                       timestamptz
 ```
+
+`is_admin` abilita la gestione del catalogo dall'area `/admin`. La verifica lato
+DB passa dalla funzione `public.is_admin()` (SECURITY DEFINER) usata nelle policy
+di scrittura di `apps`.
 
 Una riga viene creata automaticamente alla registrazione tramite il trigger
 `on_auth_user_created` → funzione `handle_new_user()`.
@@ -32,8 +37,22 @@ Una riga viene creata automaticamente alla registrazione tramite il trigger
 ### Row Level Security (RLS)
 
 - `profiles`: ogni utente legge/aggiorna **solo** la propria riga (`auth.uid() = id`).
-- `apps`: lettura pubblica (catalogo visibile a tutti).
+- `apps`: lettura **pubblica**; insert/update/delete consentiti solo se
+  `public.is_admin()` è vero (cioè `profiles.is_admin = true` per l'utente loggato).
 - `entitlements`: ogni utente legge solo i propri.
+
+### Ruolo admin (bootstrap)
+
+Non esiste un admin di default. Dopo esserti registrato dall'app, promuovi il tuo
+utente nel SQL Editor di Supabase:
+
+```sql
+update public.profiles set is_admin = true
+where email = 'tua-email@example.com';
+```
+
+Da quel momento quell'account può creare/modificare/eliminare app dall'area
+`/admin`, che scrive direttamente sulla tabella `apps`.
 
 ## Modello di entitlement
 
@@ -77,6 +96,7 @@ Stripe.
 |-----------|------|----------------|
 | `VITE_SUPABASE_URL` | frontend | Supabase → Settings → API → Project URL |
 | `VITE_SUPABASE_ANON_KEY` | frontend | Supabase → Settings → API → anon public key |
+| `VITE_AUTH_BYPASS` | frontend (dev) | `true` → salta login/abbonamento sulle app. Solo sviluppo |
 | `SUPABASE_SERVICE_ROLE_KEY` | server | Supabase → Settings → API → service_role (segreta) |
 | `SUPABASE_URL` | server | opzionale; fallback su `VITE_SUPABASE_URL` |
 | `STRIPE_SECRET_KEY` | server | Stripe → Developers → API keys |
@@ -96,19 +116,34 @@ esserti registrato, apri la tabella `profiles` su Supabase e imposta
 
 ## Dati delle app figlie
 
-Ogni app sotto `src/apps/` mantiene la propria persistenza. **PayStats** usa
-`localStorage` con namespace `paystats_`:
+**PayStats** ha due backend, scelti automaticamente in `useExpenses`:
 
-| Chiave | Contenuto |
-|--------|-----------|
-| `paystats_categories` | Categorie di spesa |
-| `paystats_expenses` | Spese |
-| `paystats_income` | Reddito mensile |
-| `paystats_seeded` | Flag dati demo già generati |
-| `paystats_theme` | Tema dell'app |
+- **Account (Supabase)** — con Supabase configurato e utente loggato, i dati vivono
+  su tabelle per-utente isolate via RLS (sync multi-dispositivo). Layer in
+  `src/apps/paystats/remote.ts`:
 
-> Migrazione futura: spostare questi dati su tabelle Supabase per-utente
-> (sincronizzazione multi-dispositivo). È una milestone a sé.
+  | Tabella | Contenuto |
+  |---------|-----------|
+  | `paystats_categories` | Categorie (PK `user_id, id`) |
+  | `paystats_expenses` | Spese (PK `user_id, id`) |
+  | `paystats_settings` | Reddito mensile (`income`) e valuta (`currency`), PK `user_id` |
+
+  RLS: ogni utente accede solo alle righe con `auth.uid() = user_id`. Al primo
+  accesso vengono seminate le categorie di default (nessuna spesa demo su un
+  account reale).
+
+- **Demo (localStorage)** — senza login/Supabase, persistenza locale con namespace
+  `paystats_`:
+
+  | Chiave | Contenuto |
+  |--------|-----------|
+  | `paystats_categories` / `paystats_expenses` / `paystats_income` / `paystats_currency` | Dati locali |
+  | `paystats_seeded` | Flag dati demo già generati |
+  | `paystats_dashboard` | Layout dashboard (ordine + visibilità widget) — **per-dispositivo** |
+  | `hub-theme` | Tema condiviso (vedi sotto); `paystats_theme` allineata per compat. |
+
+> Il layout della dashboard è una preferenza **locale al dispositivo** (non
+> sincronizzata su Supabase), gestita da `src/apps/paystats/dashboard.ts`.
 
 ## Catalogo app (`AppEntry`)
 
@@ -139,8 +174,11 @@ localStorage (`hub-apps`). In modalità demo o in caso di errore ricade su
 `loadApps()` (localStorage / `DEFAULT_APPS`). La home mostra subito la cache e poi
 la sostituisce con i dati remoti.
 
-> L'AdminPage (`/admin`) modifica per ora la copia **locale** (`saveApps`). Scrivere
-> il catalogo su Supabase dall'admin è il passo successivo.
+Quando Supabase è configurato, l'AdminPage (`/admin`) è riservata all'**admin
+loggato** (`is_admin`) e scrive direttamente sulla tabella `apps`
+(`upsertAppRemote` / `deleteAppRemote` / `saveOrderRemote` in `src/storage.ts`),
+tenendo localStorage come cache. In modalità demo (senza Supabase) resta il PIN e
+la persistenza locale.
 
 ## Tema (preferenza UI)
 

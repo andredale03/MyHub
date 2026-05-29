@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import { Settings, Sun, Moon, X, Check, RotateCcw } from 'lucide-react'
+import { CURRENCIES, currencySymbol } from '../format'
 
 interface Props {
   theme: 'light' | 'dark'
   onToggleTheme: () => void
   income: number
   onSetIncome: (v: number) => void
+  currency: string
+  onSetCurrency: (c: string) => void
   onResetDemo?: () => void
   /** Mostra solo l'icona (nessun testo) */
   compact?: boolean
@@ -13,7 +16,7 @@ interface Props {
   dropUp?: boolean
 }
 
-export function SettingsMenu({ theme, onToggleTheme, income, onSetIncome, onResetDemo, compact, dropUp = true }: Props) {
+export function SettingsMenu({ theme, onToggleTheme, income, onSetIncome, currency, onSetCurrency, onResetDemo, compact, dropUp = true }: Props) {
   const [open,       setOpen]       = useState(false)
   const [editIncome, setEditIncome] = useState(false)
   const [draft,      setDraft]      = useState('')
@@ -105,11 +108,27 @@ export function SettingsMenu({ theme, onToggleTheme, income, onSetIncome, onRese
                 onClick={() => setEditIncome(true)}
               >
                 <span className="text-sm font-semibold text-surface-800 dark:text-surface-100">
-                  €{income.toLocaleString('it-IT')}
+                  {currencySymbol(currency)}{income.toLocaleString('it-IT')}
                 </span>
                 <span className="text-xs text-surface-400 dark:text-surface-500">Modifica →</span>
               </button>
             )}
+          </div>
+
+          {/* Currency */}
+          <div className="p-3 border-b border-surface-100 dark:border-surface-700">
+            <p className="text-xs font-semibold text-surface-400 dark:text-surface-500 uppercase tracking-wide mb-2 px-1">
+              Valuta
+            </p>
+            <select
+              className="input text-sm w-full"
+              value={currency}
+              onChange={e => onSetCurrency(e.target.value)}
+            >
+              {CURRENCIES.map(c => (
+                <option key={c.code} value={c.code}>{c.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Demo data */}
