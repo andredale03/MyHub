@@ -110,7 +110,7 @@ export default function App() {
 
   // Rende un widget della dashboard per chiave (wrapper card + col-span).
   const renderWidget = (key: WidgetKey) => {
-    const cls = `card ${isFullWidth(key) ? 'md:col-span-2' : ''}`
+    const cls = `card min-w-0 ${isFullWidth(key) ? 'md:col-span-2' : ''}`
     switch (key) {
       case 'insights':
         return (
@@ -210,7 +210,7 @@ export default function App() {
       </aside>
 
       {/* ── Main content ────────────────────────────────────────────────────── */}
-      <main className="flex-1 md:ml-60 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <main className="flex-1 min-w-0 md:ml-60 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
 
         {/* Mobile header */}
         <header className="md:hidden flex items-center justify-between px-5 pb-3 pt-[calc(1.25rem+env(safe-area-inset-top))]">
@@ -482,7 +482,7 @@ function StatCard({
   delta?: number; className?: string; negative?: boolean
 }) {
   return (
-    <div className={`card relative overflow-hidden ${className ?? ''}`}>
+    <div className={`card relative overflow-hidden min-w-0 ${className ?? ''}`}>
       <div className={`absolute top-0 right-0 w-24 h-24 rounded-full opacity-10 dark:opacity-20 -translate-y-8 translate-x-8 ${accent}`} />
       <p className="text-xs font-semibold text-surface-400 dark:text-surface-500 uppercase tracking-wide leading-tight">
         {label}
